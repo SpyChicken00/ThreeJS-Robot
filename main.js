@@ -1,101 +1,92 @@
 import * as THREE from '../modules/three.module.js';
-//import * as BufferGeometryUtils from '../three/addons/utils/BufferGeometryUtils.js';
-//import * as BufferGeometryUtils from './jsm/utils/BufferGeometryUtils.js';
+import { OrbitControls } from '../modules/OrbitControls.js';
 
-
+//scene and camera and renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
-const renderer = new THREE.WebGLRenderer();
+//const renderer = new THREE.WebGLRenderer({alpha:true});
+const renderer = new THREE.WebGLRenderer({antialias: false});
 renderer.setSize( window.innerWidth, window.innerHeight );
+//renderer.setClearColor(0x010101, 1); //white background - replace ffffff with any hex color; second param is opacity, 0 => transparent
 document.body.appendChild( renderer.domElement );
 
-// add lights
-//test
 
+//orbit controls
+const controls = new OrbitControls( camera, renderer.domElement );
+camera.position.set( 0, 0, 5);
+controls.update();
+
+
+// add lights
 var ambientLight = new THREE.AmbientLight( 0x0000FF );
 scene.add(ambientLight);
 
-var dirLight = new THREE.DirectionalLight( 0xFFFFFF, 0.5 );
+var dirLight = new THREE.DirectionalLight( 0xFFFFFF, 0.5);
 scene.add(dirLight);
 
-
-/*
-//add custom lights
-var ambientLight = new THREE.AmbientLight( 0xffaaff);
-scene.add(ambientLight);
-
-var dirLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
-scene.add(dirLight);
-*/
-
-//creates a cube object
-const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-const material = new THREE.MeshBasicMaterial( { color: 0x00ff00} );
+//materials
+const material = new THREE.MeshPhongMaterial( { color: 0x00ff00, emissive: 0x993300, shininess: 50, specular: 0xff0000, transparent: true, opacity: 1.0} );
 const material2 = new THREE.MeshBasicMaterial( { color: 0xffffff } );
-const material3 = new THREE.MeshBasicMaterial( { color: 0xddffdd, side:THREE.DoubleSide} );
-const material4 = new THREE.MeshBasicMaterial( { color: 0xaaccaa, side:THREE.DoubleSide} );
-const material5 = new THREE.MeshBasicMaterial( { color: 0xfedcba} );
-const material6 = new THREE.MeshBasicMaterial( { color: 0xabcdef, side:THREE.DoubleSide } );
+const material3 = new THREE.MeshBasicMaterial( { color: 0xddffdd} );
+const material4 = new THREE.MeshBasicMaterial( { color: 0xaaccaa} );
+const material5 = new THREE.MeshLambertMaterial( { color: 0xfedcba, emissive: 0x990000, transparent: true, opacity: 0.5} );
+const material6 = new THREE.MeshLambertMaterial( { color: 0xabcdef, transparent: true, opacity: 0.7} );
 const material7 = new THREE.MeshLambertMaterial( { color: 0xfedcba, flatShading: true});
-const material8 = new THREE.MeshPhongMaterial( { color: 0x80fc66, emissive: 0x111111, shininess: 70, specular: 0xff0000});
+const material8 = new THREE.MeshPhongMaterial( { color: 0x80fc66, emissive: 0x111111, shininess: 70, specular: 0xff0000, transparent: true, opacity: 0.8});
 const material9 = new THREE.MeshLambertMaterial( { color: 0x00ff00});
-//, flatShading: true
 
+//create geometry mesh with materials
+const geometry = new THREE.BoxGeometry( 1, 1, 1 );
 const cube = new THREE.Mesh( geometry, material);
-const cylinder = new THREE.Mesh(drawCylinder(0.01, 1, 3), material6);
+const cone = new THREE.Mesh(drawCylinder(0.01, 1, 3), material5);
 const mycube = new THREE.Mesh(drawCube(0, 2, 0, 2, 0, -2), material);
 const polygon = new THREE.Mesh(PolygonGeometry(5, 3, new THREE.Vector3(-1, -1, 0)), material3);
-const array = [mycube, cylinder];
 const sphere = new THREE.Mesh(drawSphere(2, 64, 32), material8);
-//mycube.mergeGeometries([cylinder], false);
-//const hat = BufferGeometryUtils.mergeBufferGeometries([mycube, cylinder]);
-//const triangle1 = new THREE.Mesh(drawTriangle(), material);
-//const triangle2 = new THREE.Mesh(drawTriangle2(), material2);
-//const triangle3 = new THREE.Mesh(drawTriangle3(), material3);
-//const triangle4 = new THREE.Mesh(drawTriangle4(), material4);
-//const triangle5 = new THREE.Mesh(drawTriangle5(), material5);
-//const triangle6 = new THREE.Mesh(drawTriangle6(), material6);
-//scene.add(cube);
 
+
+//TODO figure out how to make combined object 
+//TODO figure out how to add textures to objects
+//TODO add floor
+
+
+const array = [mycube, cone];
+
+
+//transform mesh
+sphere.position.y += 5
+
+//add mesh to scene
 scene.add(mycube);
-scene.add(cylinder);
+scene.add(cone);
 scene.add(sphere);
 scene.add(polygon);
-//scene.add(hat);
-//scene.add(triangle1);
-//scene.add(triangle2);
-//scene.add(triangle3);
-//scene.add(triangle4);
-//scene.add(triangle5);
-//scene.add(triangle6);
 
-camera.position.z = 5;
+//add background to scene
+var bgTexture = new THREE.TextureLoader().load("../pictures/stars.jpg");
+bgTexture.minFilter = THREE.LinearFilter;
+scene.background = bgTexture;
+
+renderer.autoClear = false;
 
 function animate() {
 	requestAnimationFrame( animate );
-
-	//cube.rotation.x += 0.01;
-	//cube.rotation.y += 0.01;
-
-	//cube.rotation.x += 0.00;
-	//cube.rotation.y += 0.01;
-
-	//mycube.rotation.x += 0.01;
+;
+	//add rotations
+	mycube.rotation.x += 0.01;
 	mycube.rotation.y += 0.01;
-	//mycube.rotation.x += 0.05
-	cylinder.rotation.x += 0.001;
+	//cone.rotation.x += 0.001;
 	sphere.rotation.z += 0.0005
 	sphere.rotation.y += 0.0005;
-	/*
-	triangle1.rotation.y += 0.01;
-	triangle2.rotation.y += 0.01;
-	triangle3.rotation.y += 0.01;
-	triangle4.rotation.y += 0.01;
-	triangle5.rotation.y += 0.01;
-	triangle6.rotation.y += 0.01;
-	*/
 
+
+	//how to get mouse object in threejs
+	//cone.rotation.y = THREE.MathUtils.lerp(cone.rotation.y, (mouse.x * Math.PI) / 10, 0.1)
+	//cone.rotation.x = THREE.MathUtils.lerp(cone.rotation.x, (mouse.y * Math.PI) / 10, 0.1)
+
+	//update controls 
+	controls.update();
+	//render image
 	renderer.render( scene, camera );
 }
 
@@ -112,83 +103,11 @@ function drawTriangle() {
 	return triangle;
 }
 
-
-
-function drawTriangle2() {
-	var triangle2 = new THREE.BufferGeometry();
-	// vertices
-	
-	const points2 = [
-	new THREE.Vector3(3, 3, 0),
-	new THREE.Vector3(1, 3, 0),
-	new THREE.Vector3(1, 1, 0)
-	]
-	triangle2.setFromPoints(points2);
-
-
-
-	return triangle2;
-}
-
-function drawTriangle3() {
-	var triangle = new THREE.BufferGeometry();
-	// vertices
-	const points = [
-	new THREE.Vector3(3, 3, 1),
-	new THREE.Vector3(3, 1, 0),
-	new THREE.Vector3(3, 1, 1)
-	]
-	triangle.setFromPoints(points);
-	return triangle;
-}
-
-function drawTriangle4() {
-	var triangle = new THREE.BufferGeometry();
-	// vertices
-	const points = [
-	new THREE.Vector3(3, 1, 0),
-	new THREE.Vector3(3, 3, 1),
-	new THREE.Vector3(3, 3, 0)
-	]
-	triangle.setFromPoints(points);
-	return triangle;
-}
-
-function drawTriangle5() {
-	var triangle = new THREE.BufferGeometry();
-	// vertices
-	const points = [
-	new THREE.Vector3(1, 1, 1),
-	new THREE.Vector3(3, 1, 1),
-	new THREE.Vector3(3, 3, 1)
-	]
-	triangle.setFromPoints(points);
-	return triangle;
-}
-
-
-
-function drawTriangle6() {
-	var triangle2 = new THREE.BufferGeometry();
-	// vertices
-	
-	const points2 = [
-	new THREE.Vector3(3, 3, 1),
-	new THREE.Vector3(1, 3, 1),
-	new THREE.Vector3(1, 1, 1)
-	]
-	triangle2.setFromPoints(points2);
-
-
-
-	return triangle2;
-}
-
 function drawCube(x1, x2, y1, y2, z1, z2) {
 	const cube = new THREE.BufferGeometry();
 	const points = new Float32Array([
 
-		//TODO NEEDS TO BE CLOCKWISE BECAUSE FACIGN FROM BACK ITSCOUNTER CLOCKWISE
+		//NEEDS TO BE CLOCKWISE BECAUSE FACIGN FROM BACK ITSCOUNTER CLOCKWISE
 
 		//FRONT SIDE TWO TRIANGLES same z
 		x1, y1, z1,
@@ -248,9 +167,6 @@ function drawCube(x1, x2, y1, y2, z1, z2) {
 		x1, y1, z2,
 		x1, y1, z1,
 
-
-		
-		//TODO how to optimize to not have to use doublesided?
 	]);
 
 	cube.setAttribute('position', new THREE.BufferAttribute (points, 3));
@@ -270,9 +186,6 @@ function drawSphere(radius, width, height) {
 	return sphere;
 }
 	
-
-
-
 //broken but i dont know why, are the vertexes being defined in the wrong order? 
 function PolygonGeometry(sides, radius, location) {
 	var geo = new THREE.BufferGeometry();
@@ -286,20 +199,20 @@ function PolygonGeometry(sides, radius, location) {
 		var x = radius * Math.sin(angle) + location.x;
 		var y = radius * Math.cos(angle) + location.y;
 
-		//TODO save the vertex location : fill in the code
+		//save the vertex location : fill in the code
 		//geo.Vertices.push(new THREE.Vector3(x,y,0.0));
 		
 
 		
 		
 		
-		//TODO save the vertex location : fill in the code
+		//save the vertex location : fill in the code
 		indices.push(x, y, 0.0); // face 1
 	}
 	geo.setIndex(indices);
 	//geo.setAttribute( 'position', new THREE.BufferAttribute(vertices, 3 ) );
 
-	//TODO your code to generate minimum amount of faces for the polygon
+	//your code to generate minimum amount of faces for the polygon
 	//for (var face = 0; face < sides-2; face++) {
 		//triangle fanm from first +Y point around
 		//geo.faces.push( new THREE.Face3(0, face+1, face+2));
