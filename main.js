@@ -2,9 +2,8 @@ import * as THREE from '../modules/three.module.js';
 import { OrbitControls } from '../modules/OrbitControls.js';
 import { GUI } from '../modules/dat.gui.module.js';
 
-//TODO animation "Trick" Ideas - Rotate head around z axis 360 degrees 
-//TODO first person camera
-//TODO clean up code its nasty
+//TODO animation "Trick" Ideas - Rotate head around z axis 360 degrees, simplify to do "bounce effect"
+//TODO first person camera?
 class RobotHead extends THREE.Object3D {
 	//textures
 	teeth = new THREE.TextureLoader().load('../pictures/teeth2.jpg' );
@@ -50,6 +49,10 @@ class RobotHead extends THREE.Object3D {
 	//lights
 	lightTarget = new THREE.Mesh(drawSphereNew(0.3, 16, 16), this.eyeColor);
 	spotLight = new THREE.SpotLight(0xEDDF96);
+
+	//camera 
+	robotCamera= new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
+	cameraTarget = new THREE.Mesh(drawSphereNew(0.3, 16, 16), this.eyeColor);
 
 
 	constructor() {
@@ -125,7 +128,12 @@ class RobotHead extends THREE.Object3D {
 		this.spotLight.target.updateMatrixWorld();
 		this.add(this.spotLight);
 		this.add(this.spotLight.target);
-		this.spotLight.visible = false;	
+		this.spotLight.visible = false;		
+
+		this.robotCamera.position.z += 1;
+		this.cameraTarget.position.z += 3;
+		this.cameraTarget.position.y -= 1;
+		this.cameraTarget.visible = false;
 
 		//add to object
 		this.add(this.hatBottom);
@@ -148,6 +156,7 @@ class RobotHead extends THREE.Object3D {
 		this.add(this.rightEarFlat);
 		this.add(this.rightEarFlat2);
 		this.add(this.robotCamera);
+		this.add(this.cameraTarget);
 	}
 
 	getHead() {
@@ -172,6 +181,15 @@ class RobotHead extends THREE.Object3D {
 
 	getHelmetLight() {
 		return this.hatLight;
+	}
+
+	getRobotCamera() {
+		return this.robotCamera;
+	}
+
+	getCameraTarget() {
+		this.cameraTarget.updateMatrix();
+		return this.cameraTarget;
 	}
 
 
@@ -493,8 +511,8 @@ class Robot extends THREE.Object3D {
 //renderer
 const renderer = new THREE.WebGLRenderer({antialias: true});
 renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.BasicShadowMap;
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
 document.body.appendChild( renderer.domElement );
 
 //scene + clock
@@ -509,8 +527,8 @@ scene.background = bgTexture;
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 camera.name = "DefaultCamera";
 camera.position.set(0,0,1);
-var RenderCamera = camera;
-const controlsDefault = new OrbitControls(RenderCamera, renderer.domElement );
+var renderCamera = camera;
+const controlsDefault = new OrbitControls(renderCamera, renderer.domElement );
 
 //lights
 var ambientLight = new THREE.AmbientLight( 0x333333, 0.5);
@@ -519,21 +537,30 @@ var pointLight = new THREE.PointLight(0xFFA500, 100, 1000, 0.93);
 const redSpotlight = new THREE.SpotLight(0xFFFFFF);
 const greenSpotlight = new THREE.SpotLight(0x00FF00);
 
+//death star light
 greenSpotlight.position.set(-95, 15, -90);
 greenSpotlight.intensity = 300;
 greenSpotlight.angle = 180* Math.PI/180;
 greenSpotlight.distance = 1000;
 
+//overhead spotlight
 redSpotlight.position.set(0, 7, 1);
 redSpotlight.angle = 45 * Math.PI/180;
 redSpotlight.intensity = 100;
+redSpotlight.castShadow = true;
 redSpotlight.visible = false;
+redSpotlight.distance = 15;
 
 dirLight.position.set(0, 1, 10);
 dirLight.castShadow = true;
 dirLight.visible = false;
 
+//sunlight
 pointLight.castShadow = true;
+pointLight.shadow.mapSize.width = 4096
+pointLight.shadow.mapSize.height = 4096
+pointLight.shadow.camera.near = 0.5
+pointLight.shadow.camera.far = 1000
 pointLight.position.set(100, 10, -100)
 
 scene.add(dirLight);
@@ -551,6 +578,7 @@ const planetNormal = new THREE.TextureLoader().load('../pictures/planetNormal.jp
 const sunTexture = new THREE.TextureLoader().load('../pictures/sun.jpg');
 const sunLight = new THREE.TextureLoader().load('../pictures/sunLight.jpg');
 const deathstarTexture = new THREE.TextureLoader().load('../pictures/deathstar.jpg');
+const ringsTexture = new THREE.TextureLoader().load('../pictures/rings.jpg');
 
 //materials
 const material = new THREE.MeshPhongMaterial( { color: 0x00ff00, emissive: 0x00FF00, shininess: 90, specular: 0x00ee00, transparent: true, opacity: 0.95} );
@@ -583,12 +611,22 @@ const torusKnot = new THREE.Mesh(knot, material5);
 const floor = new THREE.Mesh(plane, floorMaterial);
 const robot = new Robot();
 
+//traverse robot to enable shadows on all objects
+robot.traverse(function( child ) { 
+    if ( child.type == 'Mesh' ) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+    }
+} );
+
+
 //transformations
 torusKnot.position.z -= 20;
 torusKnot.castShadow = true;
 floor.material.side = THREE.DoubleSide;
 floor.rotation.x = 90 * Math.PI/180;
 floor.position.y -= 3;
+floor.receiveShadow = true;
 deathstar.position.z -= 60;
 deathstar.position.x -= 55;
 deathstar.position.y += 20;
@@ -607,6 +645,7 @@ robot.position.z -= 4;
 robot.position.y += 1.42;
 robot.receiveShadow = true;
 
+
 //add to scene
 scene.add(floor); 
 scene.add(torusKnot);
@@ -617,7 +656,7 @@ scene.add(planet);
 scene.add(robot);
 
 
-//gui parts
+//gui robot parts
 const robotHead = robot.getRobotHead();
 const robotArmL = robot.getRobotArm();
 const robotHandL = robotArmL.getRobotHand();
@@ -626,6 +665,7 @@ const robotArmR = robot.getRobotArmR();
 const robotHandR = robotArmR.getRobotHand();
 const robotLowerArmR = robotArmR.getRobotLowerArm();
 const leftEye = robotHead.getLeftEye();
+const cameraTarget = robotHead.getCameraTarget();
 
 //gui
 const gui = new GUI();
@@ -648,8 +688,9 @@ leftArmFolder.add(robotArmL.rotation, 'x', 0, Math.PI * 4).name("Rotate Left Arm
 rightArmFolder.add(robotHandR.rotation, 'y', 0, Math.PI * 4).name("Rotate Right Hand");
 rightArmFolder.add(robotLowerArmR.rotation, 'x', Math.PI * -0.25, Math.PI * 0.25).name("Rotate Right Elbow");
 rightArmFolder.add(robotArmR.rotation, 'x', 0, Math.PI * 4).name("Rotate Right Arm");
-headFolder.add(robotHead.rotation, 'y', 0, Math.PI * 2).name("Rotate Head");
+headFolder.add(robotHead.rotation, 'y', Math.PI * -2, Math.PI * 2).name("Shake Head");
 headFolder.add(robotHead.rotation, 'x', Math.PI * -0.13, Math.PI * 0.13).name("Nod Head");
+headFolder.add(robotHead.rotation, 'z', Math.PI * -2, Math.PI * 2).name("Rotate Head");
 
 //change eye color
 const emissiveParams = {
@@ -662,44 +703,54 @@ headFolder.addColor(emissiveParams, 'emissive')
 headFolder.add(leftEye.material, 'wireframe').name("Wireframe Eyes");
 lightFolder.add(ambientLight, 'visible').name("Toggle Ambient Light");
 lightFolder.add(dirLight, 'visible').name("Toggle Directional Light");
-lightFolder.add(pointLight, 'visible').name("Toggle Sunlight");
 lightFolder.add(redSpotlight, 'visible').name("Toggle Spotlight");
+lightFolder.add(pointLight, 'visible').name("Toggle Sunlight");
+lightFolder.add(pointLight, 'intensity', 50, 2000).name("Sunlight Intensity");
 
 //keyboard controls
 var xSpeed = 0.05;
 var ySpeed = 0.05;
+
+//ANIMATION KEY VALUE
+let zValue = 126;
+let yValue = 126;
 
 document.addEventListener("keydown", onDocumentKeyDown, false);
 function onDocumentKeyDown(event) {
     const keyCode = event.which;
 	//translate with wasd controls
     if (keyCode == 82) {
-		//W - Forward
-        robot.position.y += ySpeed;
+		//R - Up
+       // robot.position.y += ySpeed;
+	   robot.translateY(ySpeed);
     } else if (keyCode == 70) {
-		//S - Backwards
-        robot.position.y -= ySpeed;
+		//F- Down
+        robot.translateY(-ySpeed);
     } else if (keyCode == 65) {
 		//A - Left
-        robot.position.x -= xSpeed;
+        robot.translateX(-xSpeed);
     } else if (keyCode == 68) {
 		//D- Right
-        robot.position.x += xSpeed;
+        robot.translateX(xSpeed);
     } else if (keyCode == 87) {
-		//R- Up
-        robot.position.z += xSpeed;
+		//W- Foward
+       // robot.position.z += xSpeed;
+	   robot.translateZ(xSpeed);
     } else if (keyCode == 83) {
-		//F- Down
-        robot.position.z -= xSpeed;
+		//S - Backwards
+        //robot.position.z -= xSpeed;
+		robot.translateZ(-xSpeed);
     } else if (keyCode == 32) {
 		//Space- reset position
     	robot.position.set(0, 1.5, -4);
     } else if (keyCode == 81) {
 		//Q - rotate counterclockwise
-		robot.rotation.y += xSpeed;
+		//robot.rotation.y += xSpeed;
+		robot.rotateY(xSpeed);
 	} else if (keyCode == 69) {
 		//E - rotate clockwise
-		robot.rotation.y -= xSpeed;
+		//robot.rotation.y -= xSpeed;
+		robot.rotateY(-xSpeed);
 	} else if (keyCode == 67) {
 		//C- control light 
 		if (robotHead.getSpotLight().visible == true) {
@@ -708,9 +759,36 @@ function onDocumentKeyDown(event) {
 		else {
 			robotHead.getSpotLight().visible = true;
 		}
-	  }
+	} else if (keyCode == 88) {
+		//X - toggle first person
+		if (renderCamera == camera) {
+			renderCamera = robotHead.getRobotCamera();
+			renderCamera.lookAt(new THREE.Vector3(cameraTarget.position.x, cameraTarget.position.y, cameraTarget.position.z));
+		}
+		else {
+			renderCamera = camera;
+		}
+	}
+	else if (keyCode == 90) {
+		//headspin animation, make rotate value 0 to start
+		zValue = 0
+	}
+
+	
 };
-    
+
+
+//enable all shadows
+/*
+scene.traverse( function( child ) { 
+    if ( child.type == 'Mesh') {
+        child.castShadow = true;
+        child.receiveShadow = true;
+    }
+} );
+*/
+
+
 animate();
 
 function animate() {
@@ -718,7 +796,31 @@ function animate() {
 	robotHead.getSpotLight().target.updateMatrixWorld();
 	controlsDefault.update();
 	onWindowResize();
-	renderer.render( scene, RenderCamera);
+	
+	//animation check
+	//flip
+	if (zValue == 124) {
+		robotHead.rotation.z += 0.1
+		zValue += 2
+		yValue = 0;
+		// 1 second delay
+		window.cancelAnimationFrame
+	} else if (zValue < 126) {
+		robotHead.rotation.z += 0.1
+		zValue += 2
+		clock.getElapsedTime(1);
+	} 
+
+	//spin
+	if (yValue < 126) {
+		robotHead.rotation.y += 0.1
+		yValue += 2
+		clock.getElapsedTime(1);
+	}
+
+	//animation idea - death star shoot lazer and particle explosion? 
+
+	renderer.render( scene, renderCamera);
 }
 
 function onWindowResize() {
